@@ -18,8 +18,9 @@ __global__ void kernel(pfc::BGR_4_t * const p_dst, pfc::BGR_4_t const * const p_
 	// blockDim Anzahl der Threads pro block
 	auto const t{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
 
-	//double x_normalize{ x*1.0 / bitMapWidth * (real_max - real_min) + real_min };
-	//double y_normalize{ y*y_help_value + imag_min };
+	//TODO: Get the x and y position of the threadnumber
+
+	//TODO: Calculate and color the appropriate pixel
 
 
 	if (t < size) {

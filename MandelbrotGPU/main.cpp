@@ -84,18 +84,19 @@ int main() {
 		std::unique_ptr< pfc::BGR_4_t[]>			hp_dst{ std::make_unique <pfc::BGR_4_t[]>(p_buffer_size) };
 		check(cudaMemcpy(bmp_src, p_buffer, p_buffer_size, cudaMemcpyHostToDevice));
 
-		check(call_kernel(bitmap_width *bitmap_height / 512 + 1, 512, bmp_dst, bmp_src, bitmap_width *bitmap_height));
+		check(call_kernel(bitmap_width *bitmap_height / 512 + 1, 512, bmp_dst, bmp_src, bitmap_width *bitmap_height, imag_max, imag_min, real_max, real_min, threshold, iterations, bitmap_width, bitmap_height));
 
 		check(cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost));
 
 		check(cudaFree(bmp_src));
 		check(cudaFree(bmp_dst));
 
-		pfc::bitmap bmpCp{ bitmap_width, bitmap_height };
+		pfc::bitmap bmpCp{ bitmap_width, bitmap_height/*, gsl::span{hp_dst.get(), bitmap_width *bitmap_height} */};
 		/*auto & spanCp{ bmpCp.pixel_span() };
 		bmpCp.data(hp_dst.get());
 		spanCp = hp_dst.get()[0];*/
 		//auto * const p_buffer_serial_Cp{ std::data(spanCp) };
+		//bmpCp.pixel_span()[0]= hp_dst.get()[0];
 		for (int i = 0; i < bitmap_width *bitmap_height; i++) {
 			auto val = hp_dst[i];
 			auto val1 = hp_dst.get()[i];

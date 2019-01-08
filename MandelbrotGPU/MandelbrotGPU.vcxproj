@@ -42,7 +42,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Program Files (x86)\Microsoft SDKs\MPI\Include;$(IncludePath);C:\GSL-master\include;C:\GSL-master\include</IncludePath>
+    <IncludePath>C:\Program Files (x86)\Microsoft SDKs\MPI\Include;$(IncludePath);C:\GSL-master\include;C:\public\GSL-master\include</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>C:\Program Files (x86)\Microsoft SDKs\MPI\Include;$(IncludePath);;C:\GSL-master\include</IncludePath>

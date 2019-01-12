@@ -1,7 +1,7 @@
-//           $Id: pfc_libraries.h 37984 2018-10-27 15:50:30Z p20068 $
-//          $URL: https://svn01.fh-hagenberg.at/bin/cepheiden/vocational/teaching/ESD/SPS3/2018-WS/ILV/src/Snippets/bitmap-gsl/pfc_libraries.h $
-//     $Revision: 37984 $
-//         $Date: 2018-10-27 17:50:30 +0200 (Sa., 27 Okt 2018) $
+//           $Id: pfc_libraries.h 37996 2018-10-28 15:16:00Z p20068 $
+//          $URL: https://svn01.fh-hagenberg.at/bin/cepheiden/vocational/teaching/ESD/SPS3/2015-WS/Ablauf/src/Filters/src/helpers/pfc_libraries.h $
+//     $Revision: 37996 $
+//         $Date: 2018-10-28 16:16:00 +0100 (So., 28 Okt 2018) $
 //       $Author: p20068 $
 //
 //       Creator: Peter Kulczycki (peter.kulczycki<AT>fh-hagenberg.at)
@@ -111,3 +111,5 @@
 #else
    #pragma message ("PFC: not using 'windows.h'")
 #endif
+
+// -------------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#include "pfc_types.h"
+#include "Helpers\pfc_types.h"
 #include <cstddef>
 
 cudaError_t call_kernel(

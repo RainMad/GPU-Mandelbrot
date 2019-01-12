@@ -96,14 +96,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="chrono.h" />
+    <ClInclude Include="Helpers\pfc_base.h" />
+    <ClInclude Include="Helpers\pfc_bitmap_3.h" />
+    <ClInclude Include="Helpers\pfc_compiler_detection.h" />
+    <ClInclude Include="Helpers\pfc_cuda_device_info.h" />
+    <ClInclude Include="Helpers\pfc_cuda_exception.h" />
+    <ClInclude Include="Helpers\pfc_cuda_memory.h" />
+    <ClInclude Include="Helpers\pfc_cuda_timer.h" />
+    <ClInclude Include="Helpers\pfc_libraries.h" />
+    <ClInclude Include="Helpers\pfc_macros.h" />
+    <ClInclude Include="Helpers\pfc_traits.h" />
+    <ClInclude Include="Helpers\pfc_types.h" />
     <ClInclude Include="kernel.h" />
-    <ClInclude Include="pfc_base.h" />
-    <ClInclude Include="pfc_bitmap_3.h" />
-    <ClInclude Include="pfc_compiler_detection.h" />
-    <ClInclude Include="pfc_libraries.h" />
-    <ClInclude Include="pfc_macros.h" />
-    <ClInclude Include="pfc_traits.h" />
-    <ClInclude Include="pfc_types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

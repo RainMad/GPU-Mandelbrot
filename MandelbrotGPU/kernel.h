@@ -4,6 +4,7 @@
 #include "device_launch_parameters.h"
 
 #include "Helpers\pfc_types.h"
+#include "Helpers\pfc_complex.h"
 #include <cstddef>
 
 cudaError_t call_kernel(

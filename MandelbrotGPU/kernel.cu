@@ -14,8 +14,8 @@
 // block nummer ist relativ zur grafikkarte
 // daraus muss ide absolute threadnummer berechnet werden
 
-__constant__ pfc::BGR_4_t static lookUp[65] = {
-	{0, 0, 0},
+__constant__ pfc::BGR_4_t static lookUp[128] = {
+{0, 0, 0},
 	{66, 30, 15},
 	{25, 7, 26},
 	{9, 1, 47},
@@ -80,7 +80,68 @@ __constant__ pfc::BGR_4_t static lookUp[65] = {
 	{253, 198, 138},
 	{254, 199, 139},
 	{255, 20, 140},
-
+	{66, 30, 15},
+	{25, 7, 26},
+	{9, 1, 47},
+	{4, 4, 73},
+	{0, 7, 100},
+	{12, 44, 138},
+	{57, 125, 209},
+	{134, 181, 229},
+	{211, 236, 248},
+	{241, 233, 191},
+	{248, 201, 95},
+	{255, 170, 0},
+	{204, 128, 0},
+	{153, 87, 0},
+	{116, 62, 3},
+	{126, 72, 13},
+	{136, 82, 23},
+	{146, 92, 33},
+	{156, 102, 43},
+	{166, 112, 53},
+	{176, 122, 63},
+	{186, 132, 73},
+	{196, 142, 83},
+	{206, 152, 93},
+	{216, 162, 103},
+	{217, 162, 103},
+	{218, 163, 104},
+	{219, 164, 105},
+	{220, 165, 106},
+	{221, 166, 107},
+	{222, 167, 108},
+	{223, 168, 109},
+	{224, 169, 110},
+	{225, 170, 111},
+	{226, 171, 112},
+	{227, 172, 113},
+	{228, 173, 114},
+	{229, 174, 115},
+	{230, 175, 116},
+	{231, 176, 117},
+	{232, 177, 118},
+	{233, 178, 119},
+	{234, 179, 120},
+	{235, 180, 121},
+	{236, 181, 122},
+	{237, 182, 123},
+	{238, 183, 124},
+	{239, 184, 125},
+	{240, 185, 126},
+	{241, 186, 126},
+	{242, 187, 127},
+	{243, 188, 128},
+	{244, 189, 129},
+	{245, 190, 130},
+	{246, 191, 131},
+	{247, 192, 132},
+	{248, 193, 133},
+	{249, 194, 134},
+	{250, 195, 135},
+	{251, 196, 136},
+	{252, 197, 137},
+	{253, 198, 138},
 };
 
 
@@ -109,8 +170,6 @@ __global__ void kernel(pfc::BGR_4_t * const p_dst,
 	if (t > bmp_width || u > bmp_height)
 		return;
 	int image_size = bmp_width * bmp_height;
-	/*int x_pos = (t - (t / (image_size) * image_size)) % bmp_width;
-	int y_pos = (t - (t / (image_size) * image_size)) / bmp_width;*/
 
 	int x_pos = t;
 	int y_pos = u;
@@ -125,21 +184,20 @@ __global__ void kernel(pfc::BGR_4_t * const p_dst,
 	double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
 	double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
 
-	cuDoubleComplex c = make_cuDoubleComplex(x_normalize, y_normalize);
-	cuDoubleComplex zi = make_cuDoubleComplex(0,0);
-	cuDoubleComplex zn = make_cuDoubleComplex(0,0);
-
+	pfc::complex<float> c{ x_normalize, y_normalize };
+	pfc::complex<float> zi{ 0.0,0.0 };
+	pfc::complex<float> zn{ 0.0,0.0 };
 	int value = 0;
 	for (size_t i = 0; i < iteration; i++) {
-		zn = cuCadd(cuCmul(zi, zi),c);
+		zn = zi * zi + c;
 		zi = zn;
-		if (cuCabs(zn) > threshold) {
+		if (norm(zn) > threshold) {
 			p_dst[u*bmp_width + t] = lookUp[i % iteration];
 			break;
 		}
 	}
 
-	if (cuCabs(zn) <= threshold)
+	if (norm(zn) <= threshold)
 		p_dst[u*bmp_width + t] = lookUp[0];
 }
 

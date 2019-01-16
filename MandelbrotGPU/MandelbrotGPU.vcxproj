@@ -99,6 +99,7 @@
     <ClInclude Include="Helpers\pfc_base.h" />
     <ClInclude Include="Helpers\pfc_bitmap_3.h" />
     <ClInclude Include="Helpers\pfc_compiler_detection.h" />
+    <ClInclude Include="Helpers\pfc_complex.h" />
     <ClInclude Include="Helpers\pfc_cuda_device_info.h" />
     <ClInclude Include="Helpers\pfc_cuda_exception.h" />
     <ClInclude Include="Helpers\pfc_cuda_memory.h" />

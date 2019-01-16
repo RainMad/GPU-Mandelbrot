@@ -55,7 +55,7 @@ int main() {
 		check(cudaGetDeviceProperties(&prop, 0));
 		std::cout << "name: " << prop.name << '\n' << "cc: " << prop.major << " " << prop.minor << std::endl;
 
-		int const amount_of_images =500;
+		int const amount_of_images =200;
 
 		double point_real = -0.745289981;
 		double point_imag = 0.113075003;
@@ -66,11 +66,11 @@ int main() {
 
 		double const zoom_factor = 0.95;
 
-		int const iterations = 50;
+		int const iterations = 127;
 		int const threshold = 4;
 
-		int const bitmap_width = 2048;
-		int const bitmap_height = 1024;
+		int const bitmap_width = 8000;
+		int const bitmap_height = 4000;
 
 		dim3 threads_per_block(16, 8);
 		dim3 num_blocks(bitmap_width / threads_per_block.x,
@@ -107,7 +107,7 @@ int main() {
 				bmpCp.pixel_span()[count++] = { hp_dst.get()[i] };
 				if ((i + 1) % (bitmap_width * bitmap_height) == 0) {
 					int pos = k + i / (bitmap_width * bitmap_height);
-					bmpCp.to_file("./images/test" + std::to_string(k*amount_of_images_processed_at_the_same_time +i/ (bitmap_width * bitmap_height)) + ".bmp");
+					bmpCp.to_file("../../images/test" + std::to_string(k*amount_of_images_processed_at_the_same_time +i/ (bitmap_width * bitmap_height)) + ".bmp");
 					count = 0;
 				}
 			}

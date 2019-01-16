@@ -55,7 +55,7 @@ int main() {
 		check(cudaGetDeviceProperties(&prop, 0));
 		std::cout << "name: " << prop.name << '\n' << "cc: " << prop.major << " " << prop.minor << std::endl;
 
-		int const amount_of_images =200;
+		int const amount_of_images =500;
 
 		double point_real = -0.745289981;
 		double point_imag = 0.113075003;
@@ -66,11 +66,15 @@ int main() {
 
 		double const zoom_factor = 0.95;
 
-		int const iterations = 30;
+		int const iterations = 50;
 		int const threshold = 4;
 
-		int const bitmap_width = 4024;
-		int const bitmap_height = 2152;
+		int const bitmap_width = 2048;
+		int const bitmap_height = 1024;
+
+		dim3 threads_per_block(16, 8);
+		dim3 num_blocks(bitmap_width / threads_per_block.x,
+			bitmap_height / threads_per_block.y);
 
 		int const amount_of_images_processed_at_the_same_time = 1;
 		bool const print_images = false;
@@ -87,10 +91,12 @@ int main() {
 
 		pfc::bitmap bmpCp{ bitmap_width, bitmap_height };
 
+		dim3 gridSize(bitmap_height, amount_of_images);
+
 		int count = 0;
 		pfc::cuda::timer timer(true);
 		for (int k = 0; k < amount_of_images / amount_of_images_processed_at_the_same_time; k++) {
-			check(call_kernel(bitmap_width * bitmap_height * amount_of_images_processed_at_the_same_time / 32 + 1, 32, bmp_dst, bitmap_width * bitmap_height*amount_of_images, imag_max, imag_min, real_max, real_min, threshold, iterations, bitmap_width, bitmap_height, amount_of_images, point_real, point_imag, zoom_factor, k));
+			check(call_kernel(num_blocks, threads_per_block, bmp_dst, bitmap_width * bitmap_height*amount_of_images, imag_max, imag_min, real_max, real_min, threshold, iterations, bitmap_width, bitmap_height, amount_of_images, point_real, point_imag, zoom_factor, k));
 
 			check(cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost));
 
@@ -107,6 +113,12 @@ int main() {
 			}
 		}
 		timer.stop();
+
+		std::cout << "Amount of images: " << amount_of_images << std::endl;
+		std::cout << "Size of one image - Width: " << bitmap_width << " / Height: " << bitmap_height << std::endl;
+		std::cout << "Iterations: " << iterations << std::endl;
+		std::cout << "Threshold: " << threshold << std::endl;
+
 		print_time("Mandelbrot GPU:   ", timer) << '\n';
 
 		check(cudaFree(bmp_dst));

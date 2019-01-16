@@ -10,7 +10,7 @@ cudaError_t call_kernel(
 	dim3 big, 
 	dim3 tib, 
 	pfc::BGR_4_t * p_dst, 
-	std::size_t size, 
+	std::size_t size_x, 
 	double imag_max,
 	double imag_min,
 	double real_max,

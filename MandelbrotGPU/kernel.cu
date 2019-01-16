@@ -14,7 +14,7 @@
 // block nummer ist relativ zur grafikkarte
 // daraus muss ide absolute threadnummer berechnet werden
 
-__constant__ pfc::BGR_4_t static lookUp[32] = {
+__constant__ pfc::BGR_4_t static lookUp[65] = {
 	{0, 0, 0},
 	{66, 30, 15},
 	{25, 7, 26},
@@ -41,12 +41,46 @@ __constant__ pfc::BGR_4_t static lookUp[32] = {
 	{196, 142, 83},
 	{206, 152, 93},
 	{216, 162, 103},
-	{226, 172, 113},
-	{236, 182, 123},
-	{246, 192, 133},
-	{250, 202, 143},
-	{253, 212, 153},
-	{255, 222, 163},
+	{217, 162, 103},
+	{218, 163, 104},
+	{219, 164, 105},
+	{220, 165, 106},
+	{221, 166, 107},
+	{222, 167, 108},
+	{223, 168, 109},
+	{224, 169, 110},
+	{225, 170, 111},
+	{226, 171, 112},
+	{227, 172, 113},
+	{228, 173, 114},
+	{229, 174, 115},
+	{230, 175, 116},
+	{231, 176, 117},
+	{232, 177, 118},
+	{233, 178, 119},
+	{234, 179, 120},
+	{235, 180, 121},
+	{236, 181, 122},
+	{237, 182, 123},
+	{238, 183, 124},
+	{239, 184, 125},
+	{240, 185, 126},
+	{241, 186, 126},
+	{242, 187, 127},
+	{243, 188, 128},
+	{244, 189, 129},
+	{245, 190, 130},
+	{246, 191, 131},
+	{247, 192, 132},
+	{248, 193, 133},
+	{249, 194, 134},
+	{250, 195, 135},
+	{251, 196, 136},
+	{252, 197, 137},
+	{253, 198, 138},
+	{254, 199, 139},
+	{255, 20, 140},
+
 };
 
 
@@ -54,7 +88,7 @@ __device__ double pow(double x, double y);
 
 // divergenten code vermeiden! -> eine der größten Bremsen
 __global__ void kernel(pfc::BGR_4_t * const p_dst, 
-	std::size_t const size, 
+	std::size_t const size_x, 
 	double imag_max, 
 	double imag_min,
 	double real_max,
@@ -70,18 +104,23 @@ __global__ void kernel(pfc::BGR_4_t * const p_dst,
 	int const image_number) {
 	// blockDim Anzahl der Threads pro block
 	auto const t{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
+	auto const u{ blockIdx.y * blockDim.y + threadIdx.y };
 
-	if (t > size)
+	if (t > bmp_width || u > bmp_height)
 		return;
+	int image_size = bmp_width * bmp_height;
+	/*int x_pos = (t - (t / (image_size) * image_size)) % bmp_width;
+	int y_pos = (t - (t / (image_size) * image_size)) / bmp_width;*/
 
-	int x_pos = (t - (t / (bmp_width*bmp_height) * bmp_width*bmp_height)) % bmp_width;
-	int y_pos = (t - (t / (bmp_width*bmp_height) * bmp_width*bmp_height)) / bmp_width;
+	int x_pos = t;
+	int y_pos = u;
 
-	int image_n = t / (bmp_width*bmp_height);
-	real_min = point_real - (point_real - real_min) * pow(zoom_factor, image_number + image_n);
-	real_max = point_real + (real_max - point_real) * pow(zoom_factor, image_number + image_n);
-	imag_max = point_imag + (imag_max - point_imag) * pow(zoom_factor, image_number + image_n);
-	imag_min = point_imag - (point_imag - imag_min) * pow(zoom_factor, image_number + image_n);
+	int image_n = t / (image_size);
+	double pow_result = pow(zoom_factor, image_number + image_n);
+	real_min = point_real - (point_real - real_min) * pow_result;
+	real_max = point_real + (real_max - point_real) * pow_result;
+	imag_max = point_imag + (imag_max - point_imag) * pow_result;
+	imag_min = point_imag - (point_imag - imag_min) * pow_result;
 
 	double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
 	double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
@@ -95,20 +134,20 @@ __global__ void kernel(pfc::BGR_4_t * const p_dst,
 		zn = cuCadd(cuCmul(zi, zi),c);
 		zi = zn;
 		if (cuCabs(zn) > threshold) {
-			p_dst[t] = lookUp[i % iteration];
+			p_dst[u*bmp_width + t] = lookUp[i % iteration];
 			break;
 		}
 	}
 
 	if (cuCabs(zn) <= threshold)
-		p_dst[t] = lookUp[0];	
+		p_dst[u*bmp_width + t] = lookUp[0];
 }
 
 cudaError_t call_kernel(
 	dim3 const big, 
 	dim3 const tib, 
 	pfc::BGR_4_t * p_dst, 
-	std::size_t const size, 
+	std::size_t const size_x, 
 	double imag_max,
 	double imag_min,
 	double real_max,
@@ -126,6 +165,6 @@ cudaError_t call_kernel(
 	// threads in block
 	// 3 kernel a 512 threads
 
-	kernel << <big, tib >> > (p_dst, size, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
+	kernel << <big, tib >> > (p_dst, size_x, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
 	return cudaGetLastError();
 }

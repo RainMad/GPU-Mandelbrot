@@ -1,0 +1,78 @@
+#pragma once
+//#include "./pfc_status.h"
+#include "./pfc_version.h"
+
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+
+#undef  PFC_CONFIG
+#define PFC_CONFIG \
+   pfc::config::instance ()
+
+namespace pfc {
+
+	class config final {
+	public:
+
+
+		static char const * app_title() {
+			return "Fractals Mandelbrot";
+		}
+
+		static char const * img_filename() {
+			return "./images/fractal{0}.bmp";
+		}
+
+		static version const & code_version(int const n = 0) {
+			static bool    init(false);
+			static version ver(n, 0, 1);
+
+			if (!init) {
+				ver.register_name(0, "initiale Version");
+				ver.register_name(1, "Adding bulb checking");
+
+
+				init = true;
+			}
+
+			return ver;
+		}
+
+		static dim3 block_size_fractal() {
+			switch (code_version().as_int()) {
+			case  0: return { 8,  8 };
+			case  1: return { 32,  2 };
+			};
+		}
+
+
+		config(config const &) = delete;   // no copy construction
+		config(config &&) = delete;   // no move construction
+
+		config & operator = (config const &) = delete;   // no copy assignment
+		config & operator = (config &&) = delete;   // no move assignment
+
+		static int const amount_of_images = 200;
+
+		static double constexpr point_real = -0.745289981;
+		static double constexpr point_imag = 0.113075003;
+		static double constexpr real_max = 1.25470996;
+		static double constexpr real_min = -2.74529005;
+		static double constexpr imag_max = 1.23807502;
+		static double constexpr  imag_min = -1.01192498;
+
+		static double constexpr zoom_factor = 0.95;
+
+		static int const iterations = 127;
+		static int const threshold = 4;
+
+		static int const bitmap_width = 8192;
+		static int const bitmap_height = 4608;
+
+		static bool const print_images = true;
+
+	private:
+		config() {   // singleton
+		}
+	};
+}

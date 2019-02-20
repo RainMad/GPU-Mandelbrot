@@ -21,5 +21,7 @@
     <ClInclude Include="Helpers\pfc_macros.h" />
     <ClInclude Include="Helpers\pfc_traits.h" />
     <ClInclude Include="Helpers\pfc_types.h" />
+    <ClInclude Include="pfc_config.h" />
+    <ClInclude Include="pfc_version.h" />
   </ItemGroup>
 </Project>

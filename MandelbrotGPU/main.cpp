@@ -12,6 +12,8 @@
 #include "./Helpers/pfc_bitmap_3.h"
 #include "./Helpers/pfc_cuda_timer.h"
 
+#include "./pfc_config.h"
+
 #include <iomanip>
 
 using namespace std::string_literals;
@@ -24,7 +26,7 @@ void check(cudaError_t const error) {
 	}
 }
 
-inline std::string ms_to_string(pfc::cuda::timer const & timer) {
+inline std::string ms_to_string(pfc::cuda::timer const & timer, int const runs = 1) {
 	if (timer.is_running()) {
 		return "timer is running";
 
@@ -33,19 +35,119 @@ inline std::string ms_to_string(pfc::cuda::timer const & timer) {
 		return "timer did never run";
 	}
 
-	return std::to_string(timer.get_elapsed_ms()) + " ms";
+	return std::to_string(timer.get_elapsed_ms()/runs) + " ms";
 }
 
-inline std::ostream & print_time(std::string header, pfc::cuda::timer const & time, int const width = 7, std::ostream & out = std::cout) {
+inline std::ostream & print_time(std::string header, pfc::cuda::timer const & time, int const runs, int const width = 7, std::ostream & out = std::cout) {
 	auto const state = out.rdstate();
 
 	out << header
-		<< std::setw(width) << std::setfill(' ') << std::right << ms_to_string(time);
+		<< std::setw(width) << std::setfill(' ') << std::right << ms_to_string(time,runs);
 
 	out.setstate(state); return out;
 }
 
-int main() {
+void print_images(pfc::bitmap const & bmpCp, std::unique_ptr< pfc::BGR_4_t[]> const & hp_dst, int const k) {
+	int count = 0;
+	for (int i = 0; i < pfc::config::bitmap_width * pfc::config::bitmap_height; i++) {
+		bmpCp.pixel_span()[count++] = { hp_dst.get()[i] };
+		if ((i + 1) % (pfc::config::bitmap_width * pfc::config::bitmap_height) == 0) {
+			bmpCp.to_file("images/test" + std::to_string(k + i / (pfc::config::bitmap_width * pfc::config::bitmap_height)) + ".bmp");
+			count = 0;
+		}
+	}
+}
+
+pfc::cuda::timer cuda_wrapper_version1(
+	pfc::BGR_4_t * bmp_dst,
+	std::unique_ptr< pfc::BGR_4_t[]> &hp_dst,
+	int const p_buffer_size,
+	pfc::bitmap  &bmpCp,
+	dim3 const threads_per_block,
+	dim3 const num_blocks,
+	int const runs = 10) 
+{
+	pfc::cuda::timer timer(true);
+	for (size_t i = 0; i < runs; i++)
+	{
+		for (int k = 0; k < pfc::config::amount_of_images; k++) {
+			check(call_kernel(num_blocks,
+				threads_per_block,
+				bmp_dst,
+				pfc::config::bitmap_width * pfc::config::bitmap_height * pfc::config::amount_of_images,
+				pfc::config::imag_max,
+				pfc::config::imag_min,
+				pfc::config::real_max,
+				pfc::config::real_min,
+				pfc::config::threshold,
+				pfc::config::iterations,
+				pfc::config::bitmap_width,
+				pfc::config::bitmap_height,
+				pfc::config::amount_of_images,
+				pfc::config::point_real,
+				pfc::config::point_imag,
+				pfc::config::zoom_factor, k));
+
+			check(cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost));
+
+			if (pfc::config::print_images && runs < 2)
+				print_images(bmpCp, hp_dst, k);
+		}
+	}
+
+	return std::move(timer.stop());
+}
+
+pfc::cuda::timer cuda_wrapper_version2(
+	pfc::BGR_4_t * bmp_dst,
+	std::unique_ptr< pfc::BGR_4_t[]> &hp_dst,
+	int const p_buffer_size,
+	pfc::bitmap  &bmpCp,
+	dim3 const threads_per_block,
+	dim3 const num_blocks,
+	int const runs = 10)
+{
+	pfc::cuda::timer timer(true);
+	for (size_t i = 0; i < runs; i++)
+	{
+		for (int k = 0; k < pfc::config::amount_of_images; k++) {
+			check(call_kernel_1(num_blocks,
+				threads_per_block,
+				bmp_dst,
+				pfc::config::bitmap_width * pfc::config::bitmap_height * pfc::config::amount_of_images,
+				pfc::config::imag_max,
+				pfc::config::imag_min,
+				pfc::config::real_max,
+				pfc::config::real_min,
+				pfc::config::threshold,
+				pfc::config::iterations,
+				pfc::config::bitmap_width,
+				pfc::config::bitmap_height,
+				pfc::config::amount_of_images,
+				pfc::config::point_real,
+				pfc::config::point_imag,
+				pfc::config::zoom_factor, k));
+
+			cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost);
+
+			if (pfc::config::print_images && runs < 2)
+				print_images(bmpCp, hp_dst, k);
+		}
+	}
+
+	return std::move(timer.stop());
+}
+
+int main(int argc, char * argv[]) {
+	if ((argc >= 2) && (argv != nullptr)) {
+		pfc::config::code_version(std::atoi(argv[1]));
+	}
+	std::cout
+		<< std::boolalpha << pfc::config::app_title() << '\n'
+		<< std::string(std::string(pfc::config::app_title()).size(), '-') << "\n"
+		"Code Version: " << pfc::config::code_version().as_int() << "\n"
+		"Description:  " << pfc::config::code_version().as_string() << "\n";
+
 	int count{ -1 };
 	check(cudaGetDeviceCount(&count));
 	if (count > 0) {
@@ -55,71 +157,35 @@ int main() {
 		check(cudaGetDeviceProperties(&prop, 0));
 		std::cout << "name: " << prop.name << '\n' << "cc: " << prop.major << " " << prop.minor << std::endl;
 
-		int const amount_of_images =200;
+		dim3 threads_per_block = pfc::config::block_size_fractal();
+		dim3 num_blocks(pfc::config::bitmap_width / threads_per_block.x,
+			pfc::config::bitmap_height / threads_per_block.y);
 
-		double point_real = -0.745289981;
-		double point_imag = 0.113075003;
-		double const real_max = 1.25470996;
-		double const real_min = -2.74529005;
-		double const imag_max = 1.23807502;
-		double const imag_min = -1.01192498;
-
-		double const zoom_factor = 0.95;
-
-		int const iterations = 127;
-		int const threshold = 4;
-
-		int const bitmap_width = 8000;
-		int const bitmap_height = 4000;
-
-		dim3 threads_per_block(16, 8);
-		dim3 num_blocks(bitmap_width / threads_per_block.x,
-			bitmap_height / threads_per_block.y);
-
-		int const amount_of_images_processed_at_the_same_time = 1;
-		bool const print_images = false;
-
-
-		pfc::bitmap bmp{ bitmap_width, bitmap_height };
+		pfc::bitmap bmp{ pfc::config::bitmap_width, pfc::config::bitmap_height };
 		auto & span{ bmp.pixel_span() };
 		auto * const p_buffer{ std::data(span) };
 
-		int p_buffer_size = bitmap_width * bitmap_height * sizeof(pfc::BGR_4_t) * amount_of_images_processed_at_the_same_time;
+		int p_buffer_size = pfc::config::bitmap_width * pfc::config::bitmap_height * sizeof(span);
 		pfc::BGR_4_t * bmp_dst{}; cudaMalloc(&bmp_dst, p_buffer_size);
 
 		std::unique_ptr< pfc::BGR_4_t[]>			hp_dst{ std::make_unique <pfc::BGR_4_t[]>(p_buffer_size) };
 
-		pfc::bitmap bmpCp{ bitmap_width, bitmap_height };
+		pfc::bitmap bmpCp{ pfc::config::bitmap_width, pfc::config::bitmap_height };
 
-		dim3 gridSize(bitmap_height, amount_of_images);
+		dim3 gridSize(pfc::config::bitmap_height, pfc::config::amount_of_images);
 
 		int count = 0;
-		pfc::cuda::timer timer(true);
-		for (int k = 0; k < amount_of_images / amount_of_images_processed_at_the_same_time; k++) {
-			check(call_kernel(num_blocks, threads_per_block, bmp_dst, bitmap_width * bitmap_height*amount_of_images, imag_max, imag_min, real_max, real_min, threshold, iterations, bitmap_width, bitmap_height, amount_of_images, point_real, point_imag, zoom_factor, k));
-
-			check(cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost));
-
-			if (!print_images)
-				continue;
-
-			for (int i = 0; i < bitmap_width * bitmap_height * amount_of_images_processed_at_the_same_time; i++) {
-				bmpCp.pixel_span()[count++] = { hp_dst.get()[i] };
-				if ((i + 1) % (bitmap_width * bitmap_height) == 0) {
-					int pos = k + i / (bitmap_width * bitmap_height);
-					bmpCp.to_file("../../images/test" + std::to_string(k*amount_of_images_processed_at_the_same_time +i/ (bitmap_width * bitmap_height)) + ".bmp");
-					count = 0;
-				}
+		int const runs = 1 ;
+			switch (pfc::config::code_version().as_int()) {
+				case 0: print_time("Mandelbrot GPU:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+				case 1: print_time("Mandelbrot GPU - bulb checking:   ", cuda_wrapper_version2(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
 			}
-		}
-		timer.stop();
 
-		std::cout << "Amount of images: " << amount_of_images << std::endl;
-		std::cout << "Size of one image - Width: " << bitmap_width << " / Height: " << bitmap_height << std::endl;
-		std::cout << "Iterations: " << iterations << std::endl;
-		std::cout << "Threshold: " << threshold << std::endl;
+		std::cout << "Amount of images: " << pfc::config::amount_of_images << std::endl;
+		std::cout << "Size of one image - Width: " << pfc::config::bitmap_width << " / Height: " << pfc::config::bitmap_height << std::endl;
+		std::cout << "Iterations: " << pfc::config::iterations << std::endl;
+		std::cout << "Threshold: " << pfc::config::threshold << std::endl;
 
-		print_time("Mandelbrot GPU:   ", timer) << '\n';
 
 		check(cudaFree(bmp_dst));
 	}

@@ -343,37 +343,24 @@ __global__ void kernel3(pfc::BGR_4_t * const p_dst,
 
 
 __global__ void kernel4(pfc::BGR_4_t * const p_dst,
-	double imag_max,
-	double imag_min,
-	double real_max,
-	double real_min,
+	float imag_max,
+	float imag_min,
+	float real_max,
+	float real_min,
 	int const threshold,
 	int const iteration,
 	int const bmp_width,
 	int const bmp_height,
 	int const amount_of_images,
-	double const point_real,
-	double const point_imag,
-	double const zoom_factor) {
+	float const point_real,
+	float const point_imag,
+	float const zoom_factor) {
 	// blockDim Anzahl der Threads pro block
-	auto const t{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
-	auto const u{ blockIdx.y * blockDim.y + threadIdx.y };
+	auto const x_pos{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
+	auto const y_pos{ blockIdx.y * blockDim.y + threadIdx.y };
 
-	if (t > bmp_width || u > bmp_height)
+	if (x_pos > bmp_width || y_pos > bmp_height)
 		return;
-	//int image_size = bmp_width * bmp_height;
-
-	int x_pos = t;
-	int y_pos = u;
-
-	real_min = point_real - (point_real - real_min) * zoom_factor;
-	real_max = point_real + (real_max - point_real) * zoom_factor;
-	imag_max = point_imag + (imag_max - point_imag) * zoom_factor;
-	imag_min = point_imag - (point_imag - imag_min) * zoom_factor;
-
-
-	//double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
-	//double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
 
 	float c_real{ x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
 	float c_imag{ y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
@@ -383,10 +370,8 @@ __global__ void kernel4(pfc::BGR_4_t * const p_dst,
 
 	float zn_real{ 0 };
 	float zn_imag{ 0 };
-	//pfc::complex<float> zi{ 0.0,0.0 };
-	//pfc::complex<float> zn{ 0.0,0.0 };
 
-	int index = u * bmp_width + t;
+	int index = y_pos * bmp_width + x_pos;
 
 	p_dst[index] = lookUp[0];
 	for (size_t i = 0; i < iteration; i++) {
@@ -397,16 +382,11 @@ __global__ void kernel4(pfc::BGR_4_t * const p_dst,
 		zi_real = zn_real;
 		zi_imag = zn_imag;
 
-		//zn = zi * zi + c;
-		//zi = zn;
 		if ((zn_real * zn_real + zn_imag * zn_imag) > threshold) {
-			p_dst[index] = lookUp[i % iteration];
+			p_dst[index] = lookUp[i];
 			break;
 		}
 	}
-
-	//if ((zn_real * zn_real + zn_imag * zn_imag) <= threshold)
-	//	 p_dst[index] = lookUp[0];
 }
 
 cudaError_t call_kernel_1(
@@ -492,18 +472,18 @@ cudaError_t call_kernel_4(
 	dim3 const big,
 	dim3 const tib,
 	pfc::BGR_4_t * p_dst,
-	double imag_max,
-	double imag_min,
-	double real_max,
-	double real_min,
+	float imag_max,
+	float imag_min,
+	float real_max,
+	float real_min,
 	int const threshold,
 	int const iteration,
 	int const bmp_width,
 	int const bmp_height,
 	int const amount_of_images,
-	double const point_real,
-	double const point_imag,
-	double const zoom_factor) {
+	float const point_real,
+	float const point_imag,
+	float const zoom_factor) {
 	// blocks in grid
 	// threads in block
 	// 3 kernel a 512 threads

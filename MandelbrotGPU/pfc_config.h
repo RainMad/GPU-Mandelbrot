@@ -61,16 +61,16 @@ namespace pfc {
 		config & operator = (config const &) = delete;   // no copy assignment
 		config & operator = (config &&) = delete;   // no move assignment
 
-		static int const amount_of_images = 200; // 200;
+		static int const amount_of_images = 3; // 200;
 
-		static double constexpr point_real = -0.745289981;
-		static double constexpr point_imag = 0.113075003;
-		static double constexpr real_max = 1.25470996;
-		static double constexpr real_min = -2.74529005;
-		static double constexpr imag_max = 1.23807502;
-		static double constexpr  imag_min = -1.01192498;
+		static float constexpr point_real = -0.745289981;
+		static float constexpr point_imag = 0.113075003;
+		static float constexpr real_max = 1.25470996;
+		static float constexpr real_min = -2.74529005;
+		static float constexpr imag_max = 1.23807502;
+		static float constexpr  imag_min = -1.01192498;
 
-		static double constexpr zoom_factor = 0.95;
+		static float constexpr zoom_factor = 0.95;
 
 		static int const iterations = 127;
 		static int const threshold = 4;
@@ -78,7 +78,7 @@ namespace pfc {
 		static int const bitmap_width = 8192;
 		static int const bitmap_height = 4608;
 
-		static bool const print_images = true;
+		static bool const print_images = false;
 
 	private:
 		config() {   // singleton

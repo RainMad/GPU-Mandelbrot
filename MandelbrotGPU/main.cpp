@@ -189,17 +189,28 @@ pfc::cuda::timer cuda_wrapper_version4(
 	dim3 const num_blocks,
 	int const runs)
 {
+	float helper_real_min = pfc::config::point_real - pfc::config::real_min;
+	float helper_real_max = pfc::config::real_max - pfc::config::point_real;
+	float helper_imag_max = pfc::config::imag_max - pfc::config::point_imag;
+	float helper_imag_min = pfc::config::point_imag - pfc::config::imag_min;
+
+
 	pfc::cuda::timer timer(true);
 	for (size_t i = 0; i < runs; i++)
 	{
 		for (int k = 0; k < pfc::config::amount_of_images; k++) {
+			float zoomFactor = pow(pfc::config::zoom_factor, k);
+			double real_min = pfc::config::point_real - helper_real_min * zoomFactor;
+			double real_max = pfc::config::point_real + helper_real_max * zoomFactor;
+			double imag_max = pfc::config::point_imag + helper_imag_max * zoomFactor;
+			double imag_min = pfc::config::point_imag - helper_imag_min * zoomFactor;
 			check(call_kernel_4(num_blocks,
 				threads_per_block,
 				bmp_dst,
-				pfc::config::imag_max,
-				pfc::config::imag_min,
-				pfc::config::real_max,
-				pfc::config::real_min,
+				imag_max,
+				imag_min,
+				real_max,
+				real_min,
 				pfc::config::threshold,
 				pfc::config::iterations,
 				pfc::config::bitmap_width,

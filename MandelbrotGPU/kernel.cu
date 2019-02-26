@@ -350,11 +350,50 @@ __global__ void kernel4(pfc::BGR_4_t * const p_dst,
 	int const threshold,
 	int const iteration,
 	int const bmp_width,
-	int const bmp_height,
-	int const amount_of_images,
-	float const point_real,
-	float const point_imag,
-	float const zoom_factor) {
+	int const bmp_height) {
+	// blockDim Anzahl der Threads pro block
+	auto const x_pos{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
+	auto const y_pos{ blockIdx.y * blockDim.y + threadIdx.y };
+
+	if (x_pos > bmp_width || y_pos > bmp_height)
+		return;
+
+	float c_real{ x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
+	float c_imag{ y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
+
+	float zi_real{ 0 };
+	float zi_imag{ 0 };
+
+	float zn_real{ 0 };
+	float zn_imag{ 0 };
+
+	int index = y_pos * bmp_width + x_pos;
+
+	p_dst[index] = lookUp[0];
+	for (size_t i = 0; i < iteration; i++) {
+		// TODO check
+		zn_real = zi_real * zi_real - zi_imag * zi_imag + c_real;
+		zn_imag = 2 * zi_real * zi_imag + c_imag;
+
+		zi_real = zn_real;
+		zi_imag = zn_imag;
+
+		if ((zn_real * zn_real + zn_imag * zn_imag) > threshold) {
+			p_dst[index] = lookUp[i];
+			break;
+		}
+	}
+}
+
+__global__ void kernel5(pfc::BGR_4_t * const p_dst,
+	float imag_max,
+	float imag_min,
+	float real_max,
+	float real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height) {
 	// blockDim Anzahl der Threads pro block
 	auto const x_pos{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
 	auto const y_pos{ blockIdx.y * blockDim.y + threadIdx.y };
@@ -479,15 +518,34 @@ cudaError_t call_kernel_4(
 	int const threshold,
 	int const iteration,
 	int const bmp_width,
-	int const bmp_height,
-	int const amount_of_images,
-	float const point_real,
-	float const point_imag,
-	float const zoom_factor) {
+	int const bmp_height) {
 	// blocks in grid
 	// threads in block
 	// 3 kernel a 512 threads
 	cudaFuncSetCacheConfig(kernel4, cudaFuncCachePreferL1);
-	kernel4 << <big, tib >> > (p_dst, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor);
+	kernel4 << < big, tib >> > (p_dst, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height);
+	return cudaGetLastError();
+}
+
+cudaError_t call_kernel_5(
+	dim3 const big,
+	dim3 const tib,
+	pfc::BGR_4_t * p_dst,
+	float imag_max,
+	float imag_min,
+	float real_max,
+	float real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	cudaStream_t s1,
+	cudaStream_t s2) {
+	// blocks in grid
+	// threads in block
+	// 3 kernel a 512 threads
+	cudaFuncSetCacheConfig(kernel5, cudaFuncCachePreferL1);
+	kernel5 << < big, tib, 0, s1 >> > (p_dst, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height);
+	cudaDeviceSynchronize();
 	return cudaGetLastError();
 }

@@ -75,8 +75,19 @@ cudaError_t call_kernel_4(
 	int const threshold,
 	int const iteration,
 	int const bmp_width,
+	int const bmp_height);
+
+cudaError_t call_kernel_5(
+	dim3 big,
+	dim3 tib,
+	pfc::BGR_4_t * p_dst,
+	float imag_max,
+	float imag_min,
+	float real_max,
+	float real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
 	int const bmp_height,
-	int const amount_of_images,
-	float const point_real,
-	float const point_imag,
-	float const zoom_factor);
+	cudaStream_t s1,
+	cudaStream_t s2);

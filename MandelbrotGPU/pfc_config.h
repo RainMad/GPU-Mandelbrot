@@ -25,7 +25,7 @@ namespace pfc {
 
 		static version const & code_version(int const n = 0) {
 			static bool    init(false);
-			static version ver(n, 0, 6);
+			static version ver(n, 0, 8);
 
 			if (!init) {
 				ver.register_name(0, "initiale Version");
@@ -35,6 +35,8 @@ namespace pfc {
 				ver.register_name(4, "Block size 32x8");
 				ver.register_name(5, "Prefer L1 cache");
 				ver.register_name(6, "Optimizing implementation");
+				ver.register_name(7, "Using Pinned Memory");
+				ver.register_name(8, "Using Streams");
 
 				init = true;
 			}
@@ -51,6 +53,8 @@ namespace pfc {
 			case  4: return { 32,  8 };
 			case  5: return { 32,  4 };
 			case  6: return { 32,  4 };
+			case  7: return { 32,  4 };
+			case  8: return { 32,  8 };
 			};
 		}
 
@@ -61,7 +65,7 @@ namespace pfc {
 		config & operator = (config const &) = delete;   // no copy assignment
 		config & operator = (config &&) = delete;   // no move assignment
 
-		static int const amount_of_images = 3; // 200;
+		static int const amount_of_images = 200; // 200;
 
 		static float constexpr point_real = -0.745289981;
 		static float constexpr point_imag = 0.113075003;

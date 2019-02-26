@@ -7,7 +7,7 @@
 #include "Helpers\pfc_complex.h"
 #include <cstddef>
 
-cudaError_t call_kernel(
+cudaError_t call_kernel_1(
 	dim3 big, 
 	dim3 tib, 
 	pfc::BGR_4_t * p_dst, 
@@ -26,7 +26,7 @@ cudaError_t call_kernel(
 	double const zoom_factor,
 	int const image_number);
 
-cudaError_t call_kernel_1(
+cudaError_t call_kernel_2(
 	dim3 big,
 	dim3 tib,
 	pfc::BGR_4_t * p_dst,
@@ -44,3 +44,39 @@ cudaError_t call_kernel_1(
 	double const point_imag,
 	double const zoom_factor,
 	int const image_number);
+
+cudaError_t call_kernel_3(
+	dim3 big,
+	dim3 tib,
+	pfc::BGR_4_t * p_dst,
+	std::size_t size_x,
+	double imag_max,
+	double imag_min,
+	double real_max,
+	double real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
+	double const point_real,
+	double const point_imag,
+	double const zoom_factor,
+	int const image_number);
+
+cudaError_t call_kernel_4(
+	dim3 big,
+	dim3 tib,
+	pfc::BGR_4_t * p_dst,
+	double imag_max,
+	double imag_min,
+	double real_max,
+	double real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
+	double const point_real,
+	double const point_imag,
+	double const zoom_factor);

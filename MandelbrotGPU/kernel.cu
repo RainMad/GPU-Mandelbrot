@@ -1,8 +1,5 @@
 #include "./kernel.h"
 
-#include <cuComplex.h>
-#include <cstddef>
-
 
 
 // per reference ! --> immer per value
@@ -147,20 +144,162 @@ __constant__ pfc::BGR_4_t static lookUp[128] = {
 
 __device__ double pow(double x, double y);
 
+__device__ double log(double x);
+__device__ double exp(double x);
+
+
 // divergenten code vermeiden! -> eine der größten Bremsen
-__global__ void kernel(pfc::BGR_4_t * const p_dst, 
-	std::size_t const size_x, 
-	double imag_max, 
+__global__ void kernel1(pfc::BGR_4_t * const p_dst,
+	std::size_t const size_x,
+	double imag_max,
 	double imag_min,
 	double real_max,
 	double real_min,
-	int const threshold, 
-	int const iteration, 
-	int const bmp_width, 
-	int const bmp_height, 
-	int const amount_of_images, 
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
 	double const point_real,
-	double const point_imag, 
+	double const point_imag,
+	double const zoom_factor,
+	int const image_number) {
+	// blockDim Anzahl der Threads pro block
+	auto const t{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
+	auto const u{ blockIdx.y * blockDim.y + threadIdx.y };
+
+	// double --> float
+	// pfc::complex weg
+
+
+
+	if (t > bmp_width || u > bmp_height)
+		return;
+	int image_size = bmp_width * bmp_height;
+
+	int x_pos = t;
+	int y_pos = u;
+
+	int image_n = t / (image_size);
+	double pow_result = pow(zoom_factor, image_number + image_n);
+	real_min = point_real - (point_real - real_min) * pow_result;
+	real_max = point_real + (real_max - point_real) * pow_result;
+	imag_max = point_imag + (imag_max - point_imag) * pow_result;
+	imag_min = point_imag - (point_imag - imag_min) * pow_result;
+
+	double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
+	double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
+
+	//pfc::complex<float> c{ x_normalize, y_normalize };
+	float c_real{ x_normalize };
+	float c_imag { y_normalize };
+
+	float zi_real{ 0 };
+	float zi_imag{ 0 };
+
+	float zn_real{ 0 };
+	float zn_imag{ 0 };
+	//pfc::complex<float> zi{ 0.0,0.0 };
+	//pfc::complex<float> zn{ 0.0,0.0 };
+	int value = 0;
+
+	for (size_t i = 0; i < iteration; i++) {
+		// TODO check
+		zn_real = zi_real * zi_real - zi_imag * zi_imag + c_real;
+		zn_imag = 2 * zi_real * zi_imag + c_imag;
+
+		zi_real = zn_real;
+		zi_imag = zn_imag;
+
+		//zn = zi * zi + c;
+		//zi = zn;
+		if ((zn_real * zn_real + zn_imag * zn_imag) > threshold) {
+			p_dst[u*bmp_width + t] = lookUp[i % iteration];
+			break;
+		}
+	}
+
+	// todo check (norm)
+	if ((zn_real * zn_real + zn_imag * zn_imag) <= threshold)
+		p_dst[u*bmp_width + t] = lookUp[0];
+}
+
+// divergenten code vermeiden! -> eine der größten Bremsen
+__global__ void kernel2(pfc::BGR_4_t * const p_dst,
+	std::size_t const size_x,
+	double imag_max,
+	double imag_min,
+	double real_max,
+	double real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
+	double const point_real,
+	double const point_imag,
+	double const zoom_factor,
+	int const image_number) {
+	//blockDim Anzahl der Threads pro block
+	auto const t{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
+	auto const u{ blockIdx.y * blockDim.y + threadIdx.y };
+
+	if (t > bmp_width || u > bmp_height)
+		return;
+	int image_size = bmp_width * bmp_height;
+
+	int x_pos = t;
+	int y_pos = u;
+
+	int image_n = t / (image_size);
+	double pow_result = pow(zoom_factor, image_number + image_n);
+	real_min = point_real - (point_real - real_min) * pow_result;
+	real_max = point_real + (real_max - point_real) * pow_result;
+	imag_max = point_imag + (imag_max - point_imag) * pow_result;
+	imag_min = point_imag - (point_imag - imag_min) * pow_result;
+
+	double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
+	double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
+
+	double p = sqrt((x_normalize - 0.25)*(x_normalize - 0.25) + y_normalize * y_normalize);
+	//double q = (x_normalize - 0.25)*(x_normalize - 0.25) + y_normalize * y_normalize;
+	//if (q*(q+(x_normalize -0.25)) <= (0.25*y_normalize*y_normalize)) {
+	if (x_normalize <= p - 2*p*p + 0.25 || (x_normalize +1)*(x_normalize + 1)+y_normalize*y_normalize <= 0.0625) {
+		p_dst[u*bmp_width + t] = lookUp[0];
+	}
+	else{
+
+		pfc::complex<float> c{ x_normalize, y_normalize };
+		pfc::complex<float> zi{ 0.0,0.0 };
+		pfc::complex<float> zn{ 0.0,0.0 };
+		int value = 0;
+		for (size_t i = 0; i < iteration; i++) {
+			zn = zi * zi + c;
+			zi = zn;
+			if (norm(zn) > threshold) {
+				p_dst[u*bmp_width + t] = lookUp[i % iteration];
+				break;
+			}
+		}
+
+		if (norm(zn) <= threshold)
+			p_dst[u*bmp_width + t] = lookUp[0];
+	}
+}
+
+__global__ void kernel3(pfc::BGR_4_t * const p_dst,
+	std::size_t const size_x,
+	double imag_max,
+	double imag_min,
+	double real_max,
+	double real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
+	double const point_real,
+	double const point_imag,
 	double const zoom_factor,
 	int const image_number) {
 	// blockDim Anzahl der Threads pro block
@@ -201,9 +340,9 @@ __global__ void kernel(pfc::BGR_4_t * const p_dst,
 		p_dst[u*bmp_width + t] = lookUp[0];
 }
 
-// divergenten code vermeiden! -> eine der größten Bremsen
-__global__ void kernel1(pfc::BGR_4_t * const p_dst,
-	std::size_t const size_x,
+
+
+__global__ void kernel4(pfc::BGR_4_t * const p_dst,
 	double imag_max,
 	double imag_min,
 	double real_max,
@@ -215,55 +354,62 @@ __global__ void kernel1(pfc::BGR_4_t * const p_dst,
 	int const amount_of_images,
 	double const point_real,
 	double const point_imag,
-	double const zoom_factor,
-	int const image_number) {
-	//blockDim Anzahl der Threads pro block
+	double const zoom_factor) {
+	// blockDim Anzahl der Threads pro block
 	auto const t{ blockIdx.x * blockDim.x + threadIdx.x }; // -> absolute Threadnumber
 	auto const u{ blockIdx.y * blockDim.y + threadIdx.y };
 
 	if (t > bmp_width || u > bmp_height)
 		return;
-	int image_size = bmp_width * bmp_height;
+	//int image_size = bmp_width * bmp_height;
 
 	int x_pos = t;
 	int y_pos = u;
 
-	int image_n = t / (image_size);
-	double pow_result = pow(zoom_factor, image_number + image_n);
-	real_min = point_real - (point_real - real_min) * pow_result;
-	real_max = point_real + (real_max - point_real) * pow_result;
-	imag_max = point_imag + (imag_max - point_imag) * pow_result;
-	imag_min = point_imag - (point_imag - imag_min) * pow_result;
-
-	double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
-	double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
+	real_min = point_real - (point_real - real_min) * zoom_factor;
+	real_max = point_real + (real_max - point_real) * zoom_factor;
+	imag_max = point_imag + (imag_max - point_imag) * zoom_factor;
+	imag_min = point_imag - (point_imag - imag_min) * zoom_factor;
 
 
-	double p = sqrt((x_normalize - 0.25)*(x_normalize - 0.25) + y_normalize * y_normalize);
-	if (x_normalize <= (p - 2*p*p + 0.25) || ((x_normalize + 1)*(x_normalize + 1) + y_normalize <= 1.0/16) <= 0.25*y_normalize*y_normalize) {
-		p_dst[u*bmp_width + t] = lookUp[0];
-		return;
-	}
+	//double x_normalize = { x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
+	//double y_normalize = { y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
 
-	pfc::complex<float> c{ x_normalize, y_normalize };
-	pfc::complex<float> zi{ 0.0,0.0 };
-	pfc::complex<float> zn{ 0.0,0.0 };
-	int value = 0;
+	float c_real{ x_pos * 1.0 / bmp_width * (real_max - real_min) + real_min };
+	float c_imag{ y_pos * 1.0 / bmp_height * (imag_max - imag_min) + imag_min };
+
+	float zi_real{ 0 };
+	float zi_imag{ 0 };
+
+	float zn_real{ 0 };
+	float zn_imag{ 0 };
+	//pfc::complex<float> zi{ 0.0,0.0 };
+	//pfc::complex<float> zn{ 0.0,0.0 };
+
+	int index = u * bmp_width + t;
+
+	p_dst[index] = lookUp[0];
 	for (size_t i = 0; i < iteration; i++) {
-		zn = zi * zi + c;
-		zi = zn;
-		if (norm(zn) > threshold) {
-			p_dst[u*bmp_width + t] = lookUp[i % iteration];
+		// TODO check
+		zn_real = zi_real * zi_real - zi_imag * zi_imag + c_real;
+		zn_imag = 2 * zi_real * zi_imag + c_imag;
+
+		zi_real = zn_real;
+		zi_imag = zn_imag;
+
+		//zn = zi * zi + c;
+		//zi = zn;
+		if ((zn_real * zn_real + zn_imag * zn_imag) > threshold) {
+			p_dst[index] = lookUp[i % iteration];
 			break;
-			return;
 		}
 	}
 
-	if (norm(zn) <= threshold)
-		p_dst[u*bmp_width + t] = lookUp[0];
+	//if ((zn_real * zn_real + zn_imag * zn_imag) <= threshold)
+	//	 p_dst[index] = lookUp[0];
 }
 
-cudaError_t call_kernel(
+cudaError_t call_kernel_1(
 	dim3 const big, 
 	dim3 const tib, 
 	pfc::BGR_4_t * p_dst, 
@@ -285,11 +431,11 @@ cudaError_t call_kernel(
 	// threads in block
 	// 3 kernel a 512 threads
 
-	//kernel << <big, tib >> > (p_dst, size_x, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
+	kernel1 << <big, tib >> > (p_dst, size_x, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
 	return cudaGetLastError();
 }
 
-cudaError_t call_kernel_1(
+cudaError_t call_kernel_2(
 	dim3 const big,
 	dim3 const tib,
 	pfc::BGR_4_t * p_dst,
@@ -311,6 +457,57 @@ cudaError_t call_kernel_1(
 	// threads in block
 	// 3 kernel a 512 threads
 
-	kernel1 << <big, tib >> > (p_dst, size_x, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
+	kernel2 << <big, tib >> > (p_dst, size_x, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
+	return cudaGetLastError();
+}
+
+cudaError_t call_kernel_3(
+	dim3 const big,
+	dim3 const tib,
+	pfc::BGR_4_t * p_dst,
+	std::size_t const size_x,
+	double imag_max,
+	double imag_min,
+	double real_max,
+	double real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
+	double const point_real,
+	double const point_imag,
+	double const zoom_factor,
+	int const image_number) {
+	// blocks in grid
+	// threads in block
+	// 3 kernel a 512 threads
+	cudaFuncSetCacheConfig(kernel3, cudaFuncCachePreferL1);
+	kernel3 << <big, tib >> > (p_dst, size_x, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor, image_number);
+	return cudaGetLastError();
+}
+
+
+cudaError_t call_kernel_4(
+	dim3 const big,
+	dim3 const tib,
+	pfc::BGR_4_t * p_dst,
+	double imag_max,
+	double imag_min,
+	double real_max,
+	double real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	int const amount_of_images,
+	double const point_real,
+	double const point_imag,
+	double const zoom_factor) {
+	// blocks in grid
+	// threads in block
+	// 3 kernel a 512 threads
+	cudaFuncSetCacheConfig(kernel4, cudaFuncCachePreferL1);
+	kernel4 << <big, tib >> > (p_dst, imag_max, imag_min, real_max, real_min, threshold, iteration, bmp_width, bmp_height, amount_of_images, point_real, point_imag, zoom_factor);
 	return cudaGetLastError();
 }

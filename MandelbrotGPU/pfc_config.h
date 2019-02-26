@@ -25,12 +25,16 @@ namespace pfc {
 
 		static version const & code_version(int const n = 0) {
 			static bool    init(false);
-			static version ver(n, 0, 1);
+			static version ver(n, 0, 6);
 
 			if (!init) {
 				ver.register_name(0, "initiale Version");
 				ver.register_name(1, "Adding bulb checking");
-
+				ver.register_name(2, "Block size 32x2");
+				ver.register_name(3, "Block size 32x4");
+				ver.register_name(4, "Block size 32x8");
+				ver.register_name(5, "Prefer L1 cache");
+				ver.register_name(6, "Optimizing implementation");
 
 				init = true;
 			}
@@ -41,7 +45,12 @@ namespace pfc {
 		static dim3 block_size_fractal() {
 			switch (code_version().as_int()) {
 			case  0: return { 8,  8 };
-			case  1: return { 32,  2 };
+			case  1: return { 8,  8 };
+			case  2: return { 32,  2 };
+			case  3: return { 32,  4 };
+			case  4: return { 32,  8 };
+			case  5: return { 32,  4 };
+			case  6: return { 32,  4 };
 			};
 		}
 
@@ -52,7 +61,7 @@ namespace pfc {
 		config & operator = (config const &) = delete;   // no copy assignment
 		config & operator = (config &&) = delete;   // no move assignment
 
-		static int const amount_of_images = 200;
+		static int const amount_of_images = 200; // 200;
 
 		static double constexpr point_real = -0.745289981;
 		static double constexpr point_imag = 0.113075003;

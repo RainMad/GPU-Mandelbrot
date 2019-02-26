@@ -413,17 +413,28 @@ __global__ void kernel5(pfc::BGR_4_t * const p_dst,
 	int index = y_pos * bmp_width + x_pos;
 
 	p_dst[index] = lookUp[0];
-	for (size_t i = 0; i < iteration; i++) {
-		// TODO check
-		zn_real = zi_real * zi_real - zi_imag * zi_imag + c_real;
-		zn_imag = 2 * zi_real * zi_imag + c_imag;
 
-		zi_real = zn_real;
-		zi_imag = zn_imag;
+	// bulb checking
+	float helper1 = c_real - 0.25;
+	float helper2 = c_real + 1;
+	float c_imag_c_imag = c_imag * c_imag;
+	float p = sqrt(helper1*helper1 + c_imag_c_imag);
+	if (c_real <= p - 2 * p*p + 0.25 || helper2* helper2 + c_imag_c_imag <= 0.0625) {
+		p_dst[index] = lookUp[0];
+	}
+	else{
+		for (size_t i = 0; i < iteration; i++) {
+			// TODO check
+			zn_real = zi_real * zi_real - zi_imag * zi_imag + c_real;
+			zn_imag = 2 * zi_real * zi_imag + c_imag;
 
-		if ((zn_real * zn_real + zn_imag * zn_imag) > threshold) {
-			p_dst[index] = lookUp[i];
-			break;
+			zi_real = zn_real;
+			zi_imag = zn_imag;
+
+			if ((zn_real * zn_real + zn_imag * zn_imag) > threshold) {
+				p_dst[index] = lookUp[i];
+				break;
+			}
 		}
 	}
 }

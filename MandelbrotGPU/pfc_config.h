@@ -29,14 +29,14 @@ namespace pfc {
 
 			if (!init) {
 				ver.register_name(0, "initiale Version");
-				ver.register_name(1, "Adding bulb checking");
-				ver.register_name(2, "Block size 32x2");
-				ver.register_name(3, "Block size 32x4");
-				ver.register_name(4, "Block size 32x8");
-				ver.register_name(5, "Prefer L1 cache");
-				ver.register_name(6, "Optimizing implementation");
-				ver.register_name(7, "Using Pinned Memory");
-				ver.register_name(8, "Using Streams");
+				ver.register_name(1, "Block size 32x2");
+				ver.register_name(2, "Block size 64x2");
+				ver.register_name(3, "Block size 32x8");
+				ver.register_name(4, "Prefer L1 cache");
+				ver.register_name(5, "Optimizing implementation");
+				ver.register_name(6, "Using Pinned Memory");
+				ver.register_name(7, "Using Streams");
+				ver.register_name(8, "Adding bulb checking");
 
 				init = true;
 			}
@@ -47,14 +47,14 @@ namespace pfc {
 		static dim3 block_size_fractal() {
 			switch (code_version().as_int()) {
 			case  0: return { 8,  8 };
-			case  1: return { 8,  8 };
-			case  2: return { 32,  2 };
-			case  3: return { 32,  4 };
-			case  4: return { 32,  8 };
+			case  1: return { 32,  2 };
+			case  2: return { 64,  2 };
+			case  3: return { 32,  8 };
+			case  4: return { 32,  4 };
 			case  5: return { 32,  4 };
 			case  6: return { 32,  4 };
 			case  7: return { 32,  4 };
-			case  8: return { 32,  8 };
+			case  8: return { 32,  4 };
 			};
 		}
 
@@ -82,7 +82,7 @@ namespace pfc {
 		static int const bitmap_width = 8192;
 		static int const bitmap_height = 4608;
 
-		static bool const print_images = false;
+		static bool const print_images = true;
 
 	private:
 		config() {   // singleton

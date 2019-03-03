@@ -99,48 +99,9 @@ pfc::cuda::timer cuda_wrapper_version1(
 				pfc::config::point_imag,
 				pfc::config::zoom_factor, k));
 
-			if (pfc::config::print_images && runs < 2) {
-				check(cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost));
-				print_images(bmpCp, hp_dst, k);
-			}
-		}
-	}
-
-	return std::move(timer.stop());
-}
-
-pfc::cuda::timer cuda_wrapper_version2(
-	pfc::BGR_4_t * bmp_dst,
-	std::unique_ptr< pfc::BGR_4_t[]> &hp_dst,
-	int const p_buffer_size,
-	pfc::bitmap  &bmpCp,
-	dim3 const threads_per_block,
-	dim3 const num_blocks,
-	int const runs)
-{
-	pfc::cuda::timer timer(true);
-	for (size_t i = 0; i < runs; i++)
-	{
-		for (int k = 0; k < pfc::config::amount_of_images; k++) {
-			check(call_kernel_2(num_blocks,
-				threads_per_block,
-				bmp_dst,
-				pfc::config::bitmap_width * pfc::config::bitmap_height * pfc::config::amount_of_images,
-				pfc::config::imag_max,
-				pfc::config::imag_min,
-				pfc::config::real_max,
-				pfc::config::real_min,
-				pfc::config::threshold,
-				pfc::config::iterations,
-				pfc::config::bitmap_width,
-				pfc::config::bitmap_height,
-				pfc::config::amount_of_images,
-				pfc::config::point_real,
-				pfc::config::point_imag,
-				pfc::config::zoom_factor, k));
+			check(cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost));
 
 			if (pfc::config::print_images && runs < 2) {
-				cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost);
 				print_images(bmpCp, hp_dst, k);
 			}
 		}
@@ -182,7 +143,6 @@ pfc::cuda::timer cuda_wrapper_version3(
 			cudaMemcpy(hp_dst.get(), bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost);
 
 			if (pfc::config::print_images && runs < 2) {
-				
 				print_images(bmpCp, hp_dst, k);
 			}
 		}
@@ -324,6 +284,57 @@ pfc::cuda::timer cuda_wrapper_version6(
 				pfc::config::iterations,
 				pfc::config::bitmap_width,
 				pfc::config::bitmap_height,
+				s1));
+
+			cudaMemcpyAsync(hp_dst, bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost, s2);
+
+			if (pfc::config::print_images && runs < 2) {
+				print_images(bmpCp, hp_dst, k);
+			}
+		}
+	}
+
+	return std::move(timer.stop());
+}
+
+pfc::cuda::timer cuda_wrapper_version7(
+	pfc::BGR_4_t * bmp_dst,
+	pfc::BGR_4_t * hp_dst,
+	int const p_buffer_size,
+	pfc::bitmap  &bmpCp,
+	dim3 const threads_per_block,
+	dim3 const num_blocks,
+	int const runs)
+{
+	float helper_real_min = pfc::config::point_real - pfc::config::real_min;
+	float helper_real_max = pfc::config::real_max - pfc::config::point_real;
+	float helper_imag_max = pfc::config::imag_max - pfc::config::point_imag;
+	float helper_imag_min = pfc::config::point_imag - pfc::config::imag_min;
+
+	cudaStream_t s1;
+	cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking);
+	cudaStream_t s2;
+	cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
+	pfc::cuda::timer timer(true);
+	for (size_t i = 0; i < runs; i++)
+	{
+		for (int k = 0; k < pfc::config::amount_of_images; k++) {
+			float zoomFactor = pow(pfc::config::zoom_factor, k);
+			double real_min = pfc::config::point_real - helper_real_min * zoomFactor;
+			double real_max = pfc::config::point_real + helper_real_max * zoomFactor;
+			double imag_max = pfc::config::point_imag + helper_imag_max * zoomFactor;
+			double imag_min = pfc::config::point_imag - helper_imag_min * zoomFactor;
+			check(call_kernel_6(num_blocks,
+				threads_per_block,
+				bmp_dst,
+				imag_max,
+				imag_min,
+				real_max,
+				real_min,
+				pfc::config::threshold,
+				pfc::config::iterations,
+				pfc::config::bitmap_width,
+				pfc::config::bitmap_height,
 				s1, s2));
 
 			cudaMemcpyAsync(hp_dst, bmp_dst, p_buffer_size, cudaMemcpyDeviceToHost, s2);
@@ -390,14 +401,14 @@ int main(int argc, char * argv[]) {
 
 		switch (pfc::config::code_version().as_int()) {
 			case 0: print_time("Mandelbrot GPU:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 1: print_time("Mandelbrot GPU - bulb checking:   ", cuda_wrapper_version2(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 2: print_time("Mandelbrot GPU - block size 32x2:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 3: print_time("Mandelbrot GPU - block size 32x4:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 4: print_time("Mandelbrot GPU - block size 32x8:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 5: print_time("Ma ndelbrot GPU - Prefer Cach L1:   ", cuda_wrapper_version3(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 6: print_time("Mandelbrot GPU - Optimizing implementation:   ", cuda_wrapper_version4(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 7: print_time("Mandelbrot GPU - Using Pinned memory:   ", cuda_wrapper_version5(bmp_dst, hp_dst_pinned, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
-			case 8: print_time("Mandelbrot GPU - Using Streams:   ", cuda_wrapper_version6(bmp_dst, hp_dst_pinned, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 1: print_time("Mandelbrot GPU - block size 32x2:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 2: print_time("Mandelbrot GPU - block size 64x2:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 3: print_time("Mandelbrot GPU - block size 32x8:   ", cuda_wrapper_version1(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 4: print_time("Mandelbrot GPU - Prefer Cach L1:   ", cuda_wrapper_version3(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 5: print_time("Mandelbrot GPU - Optimizing implementation:   ", cuda_wrapper_version4(bmp_dst, hp_dst, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 6: print_time("Mandelbrot GPU - Using Pinned memory:   ", cuda_wrapper_version5(bmp_dst, hp_dst_pinned, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 7: print_time("Mandelbrot GPU - Using Streams:   ", cuda_wrapper_version6(bmp_dst, hp_dst_pinned, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
+			case 8: print_time("Mandelbrot GPU - Using Bulb Checking:   ", cuda_wrapper_version7(bmp_dst, hp_dst_pinned, p_buffer_size, bmpCp, threads_per_block, num_blocks, runs), runs) << "\n"; break;
 		}
 			
 		std::cout << "Amount of images: " << pfc::config::amount_of_images << std::endl;

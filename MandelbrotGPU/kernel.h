@@ -26,24 +26,6 @@ cudaError_t call_kernel_1(
 	double const zoom_factor,
 	int const image_number);
 
-cudaError_t call_kernel_2(
-	dim3 big,
-	dim3 tib,
-	pfc::BGR_4_t * p_dst,
-	std::size_t size_x,
-	double imag_max,
-	double imag_min,
-	double real_max,
-	double real_min,
-	int const threshold,
-	int const iteration,
-	int const bmp_width,
-	int const bmp_height,
-	int const amount_of_images,
-	double const point_real,
-	double const point_imag,
-	double const zoom_factor,
-	int const image_number);
 
 cudaError_t call_kernel_3(
 	dim3 big,
@@ -78,6 +60,20 @@ cudaError_t call_kernel_4(
 	int const bmp_height);
 
 cudaError_t call_kernel_5(
+	dim3 big,
+	dim3 tib,
+	pfc::BGR_4_t * p_dst,
+	float imag_max,
+	float imag_min,
+	float real_max,
+	float real_min,
+	int const threshold,
+	int const iteration,
+	int const bmp_width,
+	int const bmp_height,
+	cudaStream_t s1);
+
+cudaError_t call_kernel_6(
 	dim3 big,
 	dim3 tib,
 	pfc::BGR_4_t * p_dst,
